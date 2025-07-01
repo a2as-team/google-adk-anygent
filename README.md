@@ -1,4 +1,4 @@
-# Enhanced Morphing Agent - Google ADK
+# AnyGent - Google ADK
 
 A sophisticated AI agent built with Google's Agent Development Kit (ADK) that can morph into any specialized agent based on user input. The agent can transform itself into experts, characters, tools, or any other specialized role you desire.
 
@@ -54,7 +54,7 @@ A sophisticated AI agent built with Google's Agent Development Kit (ADK) that ca
    GOOGLE_API_KEY=your_google_api_key_here
    ```
 
-### Running the Agent
+### Running AnyGent
 
 #### Option 1: Using ADK CLI
 
@@ -191,7 +191,7 @@ The agent maintains several state variables:
 
 ### Adding New Tools
 
-You can extend the agent by adding new tools to the `specialized_agent`:
+You can extend AnyGent by adding new tools to the `specialized_agent`:
 
 ```python
 def my_custom_tool(tool_context: ToolContext):
@@ -207,7 +207,7 @@ specialized_agent = LlmAgent(
 
 ### Modifying Agent Behavior
 
-You can customize the agent's behavior by modifying the instructions in each sub-agent:
+You can customize AnyGent's behavior by modifying the instructions in each sub-agent:
 
 ```python
 welcome_agent = LlmAgent(
@@ -234,7 +234,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 ## Contributing
 
-Feel free to enhance this agent by:
+Feel free to enhance AnyGent by:
 
 - Adding new tools and capabilities
 - Improving the morphing logic
