@@ -1,0 +1,247 @@
+manifest:
+  version: "0.1.3"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: xprilion/google-adk-anygent
+    source: https://github.com/xprilion/google-adk-anygent
+    branch: main
+    commit: "08270bfd"
+    scope: [anygent/agent.py, anygent/__init__.py]
+  issued:
+    by: A2AS.org
+    at: '2026-02-11T17:00:27Z'
+    url: https://a2as.org/certified/agents/xprilion/google-adk-anygent
+  signatures:
+    digest: sha256:NFwcQNbDP0Vm8if2LNgj0dgvqJ-gFAVYRQjTQflpMqs
+    key: ed25519:Nd2fTUZvHu6DN6EwY0URjRKqgLetvTdseGZfg-WVcbo
+    sig: ed25519:_qgl08sEcSx_etWO34hkEAWbmHhPn-PB2TLH9cXEoSBzzAehhpxYRTmEMBmh-QI1fJYkfKBWF20DkJALA7AMCw
+
+agents:
+  initial_specialization_agent:
+    type: instance
+    models: [gemini-2.0-flash]
+    params:
+      name: SpecializationPromptAgent
+      include_contents: none
+      instruction: [You are an agent that helps users define what kind of specialized agent they want you to become., 'If
+          the user has already provided a specialization, use that.', 'Otherwise, ask: "What kind of specialized agent would
+          you like me to become?"', Extract the user's desired specialization and output it as 'user_specialization'.]
+      description: Prompts the user to define the desired specialization for the agent.
+      output_key: user_specialization
+  morph_confirmation_agent:
+    type: instance
+    models: [gemini-2.0-flash]
+    params:
+      name: MorphConfirmationAgent
+      include_contents: none
+      instruction: ['You have received the user''s desired specialization: "{user_specialization}".', 'Ask the user: "Would
+          you like me to morph into this specialized agent now? (yes/no)"', 'If the user says ''yes'', output ''true'' as
+          ''user_morph_confirmed''.', 'If the user says ''no'', output ''false'' as ''user_morph_confirmed''.']
+      description: Asks the user if they want to proceed with morphing.
+      output_key: user_morph_confirmed
+  morphing_agent:
+    type: instance
+    models: [gemini-2.0-flash]
+    tools: [call_external_api, save_agent_state]
+    params:
+      name: MorphingAgent
+      include_contents: none
+      instruction: ['You are a morphing agent. Your goal is to transform yourself into the specialized agent the user described:',
+        '"{user_specialization}"', 'If you need more information or knowledge to become this agent, describe what you need
+          to search for and call the ''call_external_api'' tool with your search query in ''morphing_search_query''.', 'If
+          you have enough information, output a comprehensive description of your new specialized agent persona, including:',
+        '- Role and expertise', '- Personality traits', '- Communication style', '- Key capabilities', '- How to interact
+          with users', Output this as 'morphed_agent_description'. Do not output anything else., Repeat until you have fully
+          defined your new specialized agent persona.]
+      description: Morphs into the specialized agent by searching and iterating as needed.
+      output_key: morphed_agent_description
+  morphing_loop:
+    type: instance
+    params:
+      name: MorphingLoop
+      max_iterations: "5"
+      sub_agents: [morphing_agent]
+  root_agent.0:
+    type: instance
+    models: [gemini-2.5-flash]
+    params:
+      name: EnhancedMorphingAgentPipeline
+      welcome_agent: welcome_agent
+      initial_specialization_agent: initial_specialization_agent
+      morph_confirmation_agent: morph_confirmation_agent
+      morphing_loop: morphing_loop
+      specialized_agent_loop: specialized_agent_loop
+      thank_agent: thank_you_agent
+      instance: root_agent
+  root_agent.1:
+    type: instance
+    models: [gemini-2.5-flash]
+    params:
+      class: MorphingOrchestratorAgent
+      base: BaseAgent
+      name: name
+      welcome_agent: welcome_agent
+      initial_specialization_agent: initial_specialization_agent
+      morph_confirmation_agent: morph_confirmation_agent
+      morphing_loop: morphing_loop
+      specialized_agent_loop: specialized_agent_loop
+      thank_agent: thank_agent
+      sub_agents: [sub_agents_list]
+      instance: root_agent
+  specialized_agent:
+    type: instance
+    models: [gemini-2.0-flash]
+    tools: [exit_with_thanks, reset_agent, get_agent_capabilities, call_external_api]
+    params:
+      name: SpecializedAgent
+      include_contents: none
+      instruction: ['You are now acting as the following specialized agent:', '"{morphed_agent_description}"', 'IMPORTANT:
+          Stay in character as this specialized agent at all times.', 'When the user asks a question or gives a task, respond
+          as the specialized agent would.', 'Special commands:', '- If the user says ''reset'' or ''morph again'', call the
+          ''reset_agent'' tool', '- If the user says ''exit'' or ''goodbye'', call the ''exit_with_thanks'' tool', '- If the
+          user asks about your capabilities, call the ''get_agent_capabilities'' tool', 'IMPORTANT: Only call these tools
+          when the user explicitly requests them.', 'Otherwise, respond naturally as your specialized agent persona.', Output
+          your response as 'agent_response'.]
+      description: Handles user queries as the newly morphed specialized agent.
+      output_key: agent_response
+  specialized_agent_loop:
+    type: instance
+    params:
+      name: SpecializedAgentLoop
+      max_iterations: "20"
+      sub_agents: [specialized_agent]
+  thank_you_agent:
+    type: instance
+    models: [gemini-2.0-flash]
+    params:
+      name: ThankYouAgent
+      include_contents: none
+      instruction: ['Generate a personalized thank you message based on the session:', '- Mention the number of times the
+          agent morphed', '- Reference the final role the agent was in', '- Express gratitude for using the morphing agent',
+        '- Say goodbye warmly', Output your thank you message.]
+      description: Says personalized thank you and exits.
+      output_key: None
+  welcome_agent:
+    type: instance
+    models: [gemini-2.0-flash]
+    params:
+      name: WelcomeAgent
+      include_contents: none
+      instruction: [You are a friendly AI assistant that can morph into any specialized agent the user desires., Welcome the
+          user warmly and briefly explain that you can become any type of agent they want., 'If the user has already provided
+          their desired specialization, acknowledge it.', Output any specialization the user provides as 'user_specialization'.]
+      description: Welcomes user and explains morphing capabilities.
+      output_key: user_specialization
+
+models:
+  gemini-2.0-flash:
+    type: literal
+    agents: [welcome_agent, initial_specialization_agent, morph_confirmation_agent, morphing_agent, specialized_agent, thank_you_agent]
+  gemini-2.5-flash:
+    type: default
+    agents: [root_agent.0, root_agent.1]
+
+tools:
+  call_external_api:
+    type: function
+    agents: [morphing_agent, specialized_agent]
+    params:
+      description: Enhanced tool for searching or calling external APIs to gather info for morphing.
+  exit_with_thanks:
+    type: function
+    agents: [specialized_agent]
+    params:
+      description: Enhanced tool to trigger exit with personalized thank you.
+  get_agent_capabilities:
+    type: function
+    agents: [specialized_agent]
+    params:
+      description: Tool to describe current agent capabilities.
+  reset_agent:
+    type: function
+    agents: [specialized_agent]
+    params:
+      description: Enhanced tool to reset the agent to its base state for new morphing.
+  save_agent_state:
+    type: function
+    agents: [morphing_agent]
+    params:
+      description: Tool to save the current agent state for persistence.
+
+teams:
+  morphing_loop:
+    type: loop
+    agents: [morphing_loop, morphing_agent]
+  specialized_agent_loop:
+    type: loop
+    agents: [specialized_agent_loop, specialized_agent]
+
+imports:
+  agent: agent
+  Any: typing.Any
+  AsyncGenerator: typing.AsyncGenerator
+  BaseAgent: google.adk.agents.BaseAgent
+  Dict: typing.Dict
+  Event: google.adk.events.Event
+  InvocationContext: google.adk.agents.invocation_context.InvocationContext
+  json: json
+  LlmAgent: google.adk.agents.LlmAgent
+  logging: logging
+  LoopAgent: google.adk.agents.LoopAgent
+  Optional: typing.Optional
+  override: typing_extensions.override
+  ToolContext: google.adk.tools.tool_context.ToolContext
+  types: google.genai.types
+
+functions:
+  __init__:
+    type: sync
+    module: anygent.agent
+    args: [self, name, welcome_agent, initial_specialization_agent, morph_confirmation_agent, morphing_loop, specialized_agent_loop,
+      thank_agent]
+  _run_async_impl:
+    type: async
+    module: anygent.agent
+    args: [self, ctx]
+    params:
+      returns: AsyncGenerator
+  call_external_api:
+    type: sync
+    module: anygent.agent
+    args: [tool_context]
+  exit_with_thanks:
+    type: sync
+    module: anygent.agent
+    args: [tool_context]
+  get_agent_capabilities:
+    type: sync
+    module: anygent.agent
+    args: [tool_context]
+  morphed_agent_not_defined:
+    type: sync
+    module: anygent.agent
+    args: [state]
+  reset_agent:
+    type: sync
+    module: anygent.agent
+    args: [tool_context]
+  save_agent_state:
+    type: sync
+    module: anygent.agent
+    args: [tool_context]
+  should_exit:
+    type: sync
+    module: anygent.agent
+    args: [state]
+  should_welcome_user:
+    type: sync
+    module: anygent.agent
+    args: [state]
+  user_morph_not_confirmed:
+    type: sync
+    module: anygent.agent
+    args: [state]
+  user_specialization_not_defined:
+    type: sync
+    module: anygent.agent
+    args: [state]
